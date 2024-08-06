@@ -3,50 +3,39 @@ import pytest
 import allure
 import url
 
+@allure.title('Создание заказа')
 class TestCreateOrder:
-
-    @pytest.fixture(autouse=True)
-    def setup_and_teardown(self):
-        # Создание необходимых тестовых данных перед каждым тестом
-        self.test_data = {
-            "order_data": {
-                "firstName": "Naruto",
-                "lastName": "Uchiha",
-                "address": "Konoha, 142 apt.",
-                "metroStation": 4,
-                "phone": "+7 800 355 35 35",
-                "rentTime": 5,
-                "deliveryDate": "2020-06-06",
-                "comment": "Saske, come back to Konoha",
-                "color": None
-            }
-        }
-        yield
-        # Удаление тестовых данных после каждого теста
-        requests.delete(f'{url.SQOOTER_URL}/api/v1/orders/{self.test_data}')
-
-    @pytest.mark.parametrize("color, expected_track", [
-        ("BLACK", True),
-        ("GREY", True),
-        ("BLACK,GREY", True),
-        (None, True),  # Тест без указания цвета
+    @pytest.mark.parametrize("colors, expected_status, expected_track", [
+        (["BLACK"], 201, True),  # Один цвет
+        (["GREY"], 201, True),  # Другой цвет
+        (["BLACK", "GREY"], 201, True),  # Оба цвета
+        ([], 201, True),  # Без указания цвета
     ])
-    @allure.title('Создание заказа')
-    def test_create_order(self, color, expected_track):
-        if color:
-            self.test_data["order_data"]["color"] = color
-        else:
-            self.test_data["order_data"].pop("color", None)
+    def test_create_order(self, colors, expected_status, expected_track):
+        order_data = {
+            "firstName": "Naruto",
+            "lastName": "Uchiha",
+            "address": "Konoha, 142 apt.",
+            "metroStation": 4,
+            "phone": "+7 800 355 35 35",
+            "rentTime": 5,
+            "deliveryDate": "2020-06-06",
+            "comment": "Saske, come back to Konoha",
+            "color": colors
+        }
 
-        response = requests.post(f'{url.SQOOTER_URL}/api/v1/orders/', json=self.test_data["order_data"])
+        response = requests.post(f'{url.SQOOTER_URL}/api/v1/orders', json=order_data)
 
-        assert response.status_code == 201  # Проверка успешного создания заказа
+        # Проверяем код ответа
+        assert response.status_code == expected_status
+
+        # Проверяем наличие поля track в ответе
         response_data = response.json()
-
         if expected_track:
-            assert "track" in response_data  # Проверка наличия поля track в ответе
+            assert 'track' in response_data
         else:
-            assert "track" not in response_data  # Проверка отсутствия поля track в ответе
+            assert 'track' not in response_data
+
 
 
 
